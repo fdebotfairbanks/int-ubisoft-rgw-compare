@@ -1,0 +1,108 @@
+{
+    "objs": [],
+    "obj_size": 1735,
+    "explicit_objs": "false",
+    "head_size": 1735,
+    "max_head_size": 4194304,
+    "prefix": ".V0fTS9ATjBszGu-f4OiI7zBiD_pUifE_",
+    "rules": [
+        {
+            "key": 0,
+            "val": {
+                "start_part_num": 0,
+                "start_ofs": 4194304,
+                "part_size": 0,
+                "stripe_max_size": 4194304,
+                "override_prefix": ""
+            }
+        }
+    ],
+    "tail_instance": "",
+    "tail_placement": {
+        "bucket": {
+            "name": "test",
+            "marker": "88b24e22-5889-4011-88db-eeeb6fca97c3.14932.1",
+            "bucket_id": "88b24e22-5889-4011-88db-eeeb6fca97c3.14932.1",
+            "tenant": "",
+            "explicit_placement": {
+                "data_pool": "",
+                "data_extra_pool": "",
+                "index_pool": ""
+            }
+        },
+        "placement_rule": "default-placement"
+    },
+    "begin_iter": {
+        "part_ofs": 0,
+        "stripe_ofs": 0,
+        "ofs": 0,
+        "stripe_size": 1735,
+        "cur_part_id": 0,
+        "cur_stripe": 0,
+        "cur_override_prefix": "",
+        "location": {
+            "placement_rule": "default-placement",
+            "obj": {
+                "bucket": {
+                    "name": "test",
+                    "marker": "88b24e22-5889-4011-88db-eeeb6fca97c3.14932.1",
+                    "bucket_id": "88b24e22-5889-4011-88db-eeeb6fca97c3.14932.1",
+                    "tenant": "",
+                    "explicit_placement": {
+                        "data_pool": "",
+                        "data_extra_pool": "",
+                        "index_pool": ""
+                    }
+                },
+                "key": {
+                    "name": "ceph-deploy-ceph.log",
+                    "instance": "",
+                    "ns": ""
+                }
+            },
+            "raw_obj": {
+                "pool": "",
+                "oid": "",
+                "loc": ""
+            },
+            "is_raw": false
+        }
+    },
+    "end_iter": {
+        "part_ofs": 4194304,
+        "stripe_ofs": 0,
+        "ofs": 1735,
+        "stripe_size": 1735,
+        "cur_part_id": 0,
+        "cur_stripe": 0,
+        "cur_override_prefix": "",
+        "location": {
+            "placement_rule": "default-placement",
+            "obj": {
+                "bucket": {
+                    "name": "test",
+                    "marker": "88b24e22-5889-4011-88db-eeeb6fca97c3.14932.1",
+                    "bucket_id": "88b24e22-5889-4011-88db-eeeb6fca97c3.14932.1",
+                    "tenant": "",
+                    "explicit_placement": {
+                        "data_pool": "",
+                        "data_extra_pool": "",
+                        "index_pool": ""
+                    }
+                },
+                "key": {
+                    "name": "ceph-deploy-ceph.log",
+                    "instance": "",
+                    "ns": ""
+                }
+            },
+            "raw_obj": {
+                "pool": "",
+                "oid": "",
+                "loc": ""
+            },
+            "is_raw": false
+        }
+    }
+}
+

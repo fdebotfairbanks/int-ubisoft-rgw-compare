@@ -1,0 +1,118 @@
+{
+    "objs": [],
+    "obj_size": 702545920,
+    "explicit_objs": "false",
+    "head_size": 0,
+    "max_head_size": 0,
+    "prefix": "debian-12.11.0-amd64-netinst.iso.2~QJe9G_MwLWrRamV0v_o1UT4vRw4Ausd", 
+
+    "rules": [
+        {
+            "key": 0,
+            "val": {
+                "start_part_num": 1,
+                "start_ofs": 0,
+                "part_size": 8388608,
+                "stripe_max_size": 4194304,
+                "override_prefix": ""
+            }
+        },
+        {
+            "key": 696254464,
+            "val": {
+                "start_part_num": 84,
+                "start_ofs": 696254464,
+                "part_size": 6291456,
+                "stripe_max_size": 4194304,
+                "override_prefix": ""
+            }
+        }
+    ],
+    "tail_instance": "",
+    "tail_placement": {
+        "bucket": {
+            "name": "multipart",
+            "marker": "88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1",
+            "bucket_id": "88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1",
+            "tenant": "",
+            "explicit_placement": {
+                "data_pool": "",
+                "data_extra_pool": "",
+                "index_pool": ""
+            }
+        },
+        "placement_rule": "default-placement"
+    },
+    "begin_iter": {
+        "part_ofs": 0,
+        "stripe_ofs": 0,
+        "ofs": 0,
+        "stripe_size": 4194304,
+        "cur_part_id": 1,
+        "cur_stripe": 0,
+        "cur_override_prefix": "",
+        "location": {
+            "placement_rule": "default-placement",
+            "obj": {
+                "bucket": {
+                    "name": "multipart",
+                    "marker": "88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1",
+                    "bucket_id": "88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1",
+                    "tenant": "",
+                    "explicit_placement": {
+                        "data_pool": "",
+                        "data_extra_pool": "",
+                        "index_pool": ""
+                    }
+                },
+                "key": {
+                    "name": "debian-12.11.0-amd64-netinst.iso.2~QJe9G_MwLWrRamV0v_o1UT4vRw4Ausd.1",
+                    "instance": "",
+                    "ns": "multipart"
+                }
+            },
+            "raw_obj": {
+                "pool": "",
+                "oid": "",
+                "loc": ""
+            },
+            "is_raw": false
+        }
+    },
+    "end_iter": {
+        "part_ofs": 702545920,
+        "stripe_ofs": 702545920,
+        "ofs": 702545920,
+        "stripe_size": 4194304,
+        "cur_part_id": 85,
+        "cur_stripe": 0,
+        "cur_override_prefix": "",
+        "location": {
+            "placement_rule": "default-placement",
+            "obj": {
+                "bucket": {
+                    "name": "multipart",
+                    "marker": "88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1",
+                    "bucket_id": "88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1",
+                    "tenant": "",
+                    "explicit_placement": {
+                        "data_pool": "",
+                        "data_extra_pool": "",
+                        "index_pool": ""
+                    }
+                },
+                "key": {
+                    "name": "debian-12.11.0-amd64-netinst.iso.2~QJe9G_MwLWrRamV0v_o1UT4vRw4Ausd.85",
+                    "instance": "",
+                    "ns": "multipart"
+                }
+            },
+            "raw_obj": {
+                "pool": "",
+                "oid": "",
+                "loc": ""
+            },
+            "is_raw": false
+        }
+    }
+}

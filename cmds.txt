@@ -1,0 +1,30 @@
+export AWS_S3_MULTIPART_CHUNKSIZE=6M
+
+aws s3 cp 100mb_6mb s3://test/
+
+export AWS_S3_MULTIPART_CHUNKSIZE=16M
+
+aws s3 cp 100mb_16mb s3://test/
+
+
+
+# Grab all data from A
+
+./run.sh grab.py --db 0 --poolname zone-a.rgw.buckets.data --cluster cepha
+./run.sh getstat.py --db 0 --poolname zone-a.rgw.buckets.data --cluster cepha
+
+
+# Grab all data from B
+
+./run.sh grab.py --db 1 --poolname zone-b.rgw.buckets.data --cluster cephb
+./run.sh getstat.py --db 1 --poolname zone-b.rgw.buckets.data --cluster cephb
+
+# Find lost multipart
+./run.sh find_multipart_lost.py --db 0
+./run.sh find_multipart_lost.py --db 1
+
+# Compare
+./run.sh compare.py --dbleft 0 --dbright 1
+
+# Get manifest
+rados -p zone-a.rgw.buckets.data getxattr 88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1_debian-12.11.0-amd64-netinst.iso user.rgw.manifest > file
