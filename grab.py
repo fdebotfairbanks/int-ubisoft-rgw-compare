@@ -15,15 +15,17 @@ import sys
 
 parser = argparse.ArgumentParser(description="Script that requires --db and --poolname.")
 parser.add_argument('--db', required=True, help='Path to the database or connection string')
+parser.add_argument('--dbport', required=False, default=6379, help='Redis port')
 parser.add_argument('--poolname', required=True, help='Name of the pool to use')
 parser.add_argument('--cluster', required=True, help='Name of the ceph cluster')
 
 args = parser.parse_args()
 pool_name = args.poolname
 redis_db = args.db
+redis_port = args.dbport
 cluster = args.cluster
 
-r = redis.Redis(host='localhost', port=6379, db=redis_db)
+r = redis.Redis(host='localhost', port=redis_port, db=redis_db)
 
 def run_rgw_admin(cmd):
     """Run radosgw-admin and return parsed JSON output."""
@@ -156,7 +158,8 @@ def grab_objects(pgid):
             print(f"Found regular {object}")
 
             key = f'object:{regular_match.groupdict()["full_id"]}_{regular_match.groupdict()["objectname"]}'
-            r.hset(key, mapping={'pgid': pgid, 'rados_object': object})
+            # r.hset(key, mapping={'pgid': pgid, 'rados_object': object})
+            r.hset(key, mapping={'pgid': pgid})
             continue
 
         print("I should not  reach here")

@@ -7,6 +7,14 @@ export AWS_S3_MULTIPART_CHUNKSIZE=16M
 aws s3 cp 100mb_16mb s3://test/
 
 
+# Set up containers
+
+cd docker/mypython
+./build.sh
+
+cd docker
+docker-compose up -d
+
 
 # Grab all data from A
 
@@ -28,3 +36,11 @@ aws s3 cp 100mb_16mb s3://test/
 
 # Get manifest
 rados -p zone-a.rgw.buckets.data getxattr 88b24e22-5889-4011-88db-eeeb6fca97c3.19525.1_debian-12.11.0-amd64-netinst.iso user.rgw.manifest > file
+
+# Get indexes
+
+./run.sh getindex.py --db 0 --dbport 6379 --poolname zone-a.rgw.buckets.index --cluster cepha
+./run.sh index_mark_objects.py --db 0 --dbport 6379 --cluster cepha
+./run.sh index_check_unfound.py --db 0 --dbport 6379 --cluster cepha
+
+

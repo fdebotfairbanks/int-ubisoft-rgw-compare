@@ -21,12 +21,14 @@ import sys
 
 parser = argparse.ArgumentParser(description="Script that requires --db and --poolname.")
 parser.add_argument('--db', required=True, help='Path to the database or connection string')
+parser.add_argument('--dbport', required=False, default=6379, help='Redis port')
 parser.add_argument('--poolname', required=True, help='Name of the pool to use')
 parser.add_argument('--cluster', required=True, help='Name of the ceph cluster')
 
 args = parser.parse_args()
 pool_name = args.poolname
 redis_db = args.db
+redis_port = args.dbport
 cluster = args.cluster
 
 
@@ -36,7 +38,7 @@ cluster.connect()
 
 ioctx = cluster.open_ioctx(pool_name)
 
-r = redis.Redis(host='localhost', port=6379, db=redis_db)
+r = redis.Redis(host='localhost', port=redis_port, db=redis_db)
 t = time.gmtime()
 
 def stat_object(cluster: rados.Rados, object_name: str) -> Dict:
@@ -112,7 +114,7 @@ def worker(q: queue.Queue):
             
             
             # Manifest
-            get_manifest(object_name)
+            # get_manifest(object_name)
             processed += 1
             
         except rados.ObjectNotFound:
@@ -129,13 +131,15 @@ q = queue.Queue(maxsize=1000)
 
 # Start workers
 threads = []
-for _ in range(4):
+for _ in range(32):
     t = threading.Thread(target=worker, args=(q,))
     t.start()
     threads.append(t)
 
 for key in r.scan_iter(match="object:*"):
-    q.put(r.hget(key.decode('utf-8'), 'rados_object').decode('utf-8'))
+    #q.put(r.hget(key.decode('utf-8'), 'rados_object').decode('utf-8'))
+
+    q.put(re.sub(r"object:","",key.decode('utf-8')))
 
 # Send stop signals
 for _ in threads:
