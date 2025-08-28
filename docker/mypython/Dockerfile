@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM fdebot42on/ceph-patched-rados
 
-RUN apt-get -y update
-RUN apt-get install -y joe ceph-common jq python3-redis
+RUN yum update -y
+RUN yum -y install joe jq python3-redis

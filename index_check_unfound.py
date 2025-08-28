@@ -38,29 +38,35 @@ BATCH_SIZE = 1000  # or tune this depending on your memory and latency needs
 batch = []
 
 for key in r.scan_iter(match="object:*"):
-    results = pipeline.hgetall(key)
-    batch.append(key)
+    found_flag = r.hget(key.decode('utf-8'), 'f')
+    
+    if found_flag is None:
+        print(f'object without index entry: {key.decode("utf-8")}')
+    
 
-    if len(batch) >= BATCH_SIZE:
-        pipe = r.pipeline()
-        for k in batch:
-            pipe.hgetall(k)
-        results = pipe.execute()
+#     results = pipeline.hgetall(key)
+#     batch.append(key)
 
-        for k, data in zip(batch, results):
-            # Do something with each key and its hash
-            if not b'f' in data:
-                print(f'object without index entry: {key.decode("utf-8")}')
+#     if len(batch) >= BATCH_SIZE:
+#         pipe = r.pipeline()
+#         for k in batch:
+#             pipe.hgetall(k)
+#         results = pipe.execute()
+
+#         for k, data in zip(batch, results):
+#             # Do something with each key and its hash
+#             if not b'f' in data:
+#                 print(f'object without index entry: {key.decode("utf-8")} {data}')
                 
         
-        batch.clear()  # reset for next round
+#         batch.clear()  # reset for next round
         
-# Final partial batch (if any)
-if batch:
-    pipe = r.pipeline()
-    for k in batch:
-        pipe.hgetall(k)
-    results = pipe.execute()
-    for k, data in zip(batch, results):
-        if not b'f' in data:
-            print(f'object without index entry: {key.decode("utf-8")}')
+# # Final partial batch (if any)
+# if batch:
+#     pipe = r.pipeline()
+#     for k in batch:
+#         pipe.hgetall(k)
+#     results = pipe.execute()
+#     for k, data in zip(batch, results):
+#         if not b'f' in data:
+#             print(f'object without index entry: {key.decode("utf-8")}')
