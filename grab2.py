@@ -283,6 +283,8 @@ def grab_objects(pgid):
         count=0
         objects = list_objects_in_pg(pool_name, pgid)
         
+        # pprint.pprint(objects)
+        
         # Open database
         pipe = r.pipeline(transaction=False)
         
@@ -302,8 +304,9 @@ def grab_objects(pgid):
         
         for object in objects:
             has_non_print = False
+            logger.debug(f"Inspecting {object}")
             if has_nonprintable(object):
-                object = repr(object)
+                object = object.encode('unicode_escape').decode('ascii')
                 has_non_print = True
                 
             logger.debug(f"Inspecting {object}")
@@ -383,11 +386,14 @@ def grab_objects(pgid):
                     
                 continue
 
-            logger.error("I should not  reach here")
-            exit(1)
+            logger.error(f"I should not  reach here, but I'll store the name ({object})")
+            
+            cur.execute("INSERT INTO other (pg_id, object) VALUES(%s, %s)", (pgid, object))
+            
             
         # eventuele restjes
         if count % BATCH_SIZE != 0:
+            logger.info("Flushing commit")
             conn.commit()
             pipe.execute()
         # Record end time

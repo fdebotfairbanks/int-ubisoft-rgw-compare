@@ -31,3 +31,9 @@ CREATE TABLE IF NOT EXISTS shadow (
     pg_ids CHAR(8)[],
     UNIQUE (bucket_id, object)
 ) PARTITION BY HASH (bucket_id);
+
+CREATE TABLE IF NOT EXISTS other (
+    id SERIAL PRIMARY KEY,
+    pg_id CHAR(8) NOT NULL,
+    object TEXT NOT NULL
+)
