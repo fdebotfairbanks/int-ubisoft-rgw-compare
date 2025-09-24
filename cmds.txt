@@ -41,6 +41,18 @@ rados -p zone-a.rgw.buckets.data getxattr 88b24e22-5889-4011-88db-eeeb6fca97c3.1
 
 ./run.sh getindex.py --db 0 --dbport 6379 --poolname zone-a.rgw.buckets.index --cluster cepha
 ./run.sh index_mark_objects.py --db 0 --dbport 6379 --cluster cepha
-./run.sh index_check_unfound.py --db 0 --dbport 6379 --cluster cepha
+./run.sh index_check_unfound.py --db 0 --dbport 6379
 
 
+
+---------------------------------------
+# Grab 2
+
+# init partitions
+./run.sh psql_createpartition.py --poolname zone-a.rgw.buckets.data --cluster ceph
+
+# index
+./run.sh grab2.py --poolname zone-a.rgw.buckets.data --cluster ceph
+
+# cleanup duplicates
+./run.sh psql_removeduplicates.py --poolname zone-a.rgw.buckets.data --cluster ceph
