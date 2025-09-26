@@ -8,7 +8,7 @@ REPO="https://github.com/fdebotfairbanks/int-ubisoft-rgw-compare"
 
 if [ -e "http" ]; then
 
-    if [ ! -e "skip_git"]; then
+    if [ ! -e "skip_git" ]; then
         # Check if current directory is a git repository
         if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
             echo "Git repository detected in current directory."
