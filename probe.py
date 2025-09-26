@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 probe_http.py - probe HTTP(S) accessibility for a given URL.
 
