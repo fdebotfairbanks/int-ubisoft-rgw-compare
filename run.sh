@@ -8,23 +8,27 @@ REPO="https://github.com/fdebotfairbanks/int-ubisoft-rgw-compare"
 
 if [ -e "http" ]; then
 
-    # Check if current directory is a git repository
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        echo "Git repository detected in current directory."
-        # Try to pull; if it fails, force-reset tracked files only
-        if ! git pull --rebase; then
-            echo "git pull failed. Resetting tracked files..."
-            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ ! -e "skip_git"]; then
+        # Check if current directory is a git repository
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            echo "Git repository detected in current directory."
+            # Try to pull; if it fails, force-reset tracked files only
+            if ! git pull --rebase; then
+                echo "git pull failed. Resetting tracked files..."
+                CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+                git fetch origin
+                git reset --hard origin/"$CURRENT_BRANCH"
+                # NOTE: untracked files remain untouched
+            fi
+        else
+            echo "Not a git repository. Initializing..."
+            git init
+            git remote add origin "$REPO_URL"
             git fetch origin
-            git reset --hard origin/"$CURRENT_BRANCH"
-            # NOTE: untracked files remain untouched
+            git checkout -f -B master origin/master  # or origin/main if needed
         fi
     else
-        echo "Not a git repository. Initializing..."
-        git init
-        git remote add origin "$REPO_URL"
-        git fetch origin
-        git checkout -f -B master origin/master  # or origin/main if needed
+        echo "Skip git pull"
     fi
     # Pull docker image
 
