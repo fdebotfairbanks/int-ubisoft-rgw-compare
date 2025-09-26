@@ -24,9 +24,9 @@ if [ -e "http" ]; then
             echo "Not a git repository. Initializing..."
             git config --global init.defaultBranch main
             git init
-            git remote add origin "$REPO_URL"
+            git remote add origin "$REPO"
             git fetch origin
-            git checkout -f -B master origin/main  # or origin/main if needed
+            git checkout -f -B main origin/main  # or origin/main if needed
         fi
     else
         echo "Skip git pull"
