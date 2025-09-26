@@ -26,7 +26,6 @@ if [ -e "http" ]; then
         git fetch origin
         git checkout -f -B master origin/master  # or origin/main if needed
     fi
-
     # Pull docker image
 
     docker pull fdebot42on/mypython
