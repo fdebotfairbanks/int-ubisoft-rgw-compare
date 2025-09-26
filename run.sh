@@ -1,7 +1,5 @@
 #!/bin/bash
 
-mkdir log | true
-
 REPO="https://github.com/fdebotfairbanks/int-ubisoft-rgw-compare"
 
 ./probe.py --method GET --timeout 3 $REPO
@@ -35,6 +33,11 @@ if [ -e "http" ]; then
 
     docker pull fdebot42on/mypython
 fi
+
+if [ ! -d "log" ]; then
+    mkdir log
+fi
+
 
 docker run -it --rm -v $(pwd):/script \
 -v /etc/ceph:/etc/ceph \
