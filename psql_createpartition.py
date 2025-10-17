@@ -98,7 +98,7 @@ if __name__ == "__main__":
         
     for i in range(64):
         count += 1
-        cur.execute(f"CREATE TABLE IF NOT EXISTS shadow_part_{i} PARTITION OF shadow FOR VALUES WITH (MODULUS 64, REMAINDER {i})")
+        # cur.execute(f"CREATE TABLE IF NOT EXISTS shadow_part_{i} PARTITION OF shadow FOR VALUES WITH (MODULUS 64, REMAINDER {i})")
         cur.execute(f"CREATE TABLE IF NOT EXISTS multipart_part_{i} PARTITION OF multipart FOR VALUES WITH (MODULUS 64, REMAINDER {i})")
         if count % BATCH_SIZE == 0:
             conn.commit()

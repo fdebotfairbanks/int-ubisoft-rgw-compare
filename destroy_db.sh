@@ -16,4 +16,8 @@ done
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -U myuser -d mydb  -Atc "DROP TABLE objects CASCADE";
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -U myuser -d mydb  -Atc "DROP TABLE multipart CASCADE";
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -U myuser -d mydb  -Atc "DROP TABLE shadow CASCADE";
+docker run --rm --net host postgres:16 psql -h 127.0.0.1 -U myuser -d mydb  -Atc "DROP TABLE shadow2 CASCADE";
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -U myuser -d mydb  -Atc "DROP TABLE buckets CASCADE";
+docker run --rm --net host postgres:16 psql -h 127.0.0.1 -U myuser -d mydb  -Atc "DROP TABLE other CASCADE";
+
+redis-cli -n 2 flushdb; redis-cli -n 0 flushdb

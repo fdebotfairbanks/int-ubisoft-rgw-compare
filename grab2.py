@@ -21,6 +21,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import signal, sys
 from datetime import datetime
+import multiprocessing
 
 # Configuratie
 DB_HOST = "localhost"
@@ -66,7 +67,7 @@ logger.setLevel(LOG_LEVEL)
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(LOG_LEVEL)
 formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] pid=%(process)d %(message)s",  # format with timestamp
+    "%(asctime)s [%(levelname)s] pid=%(process)d #%(lineno)d %(message)s",  # format with timestamp
     datefmt="%Y-%m-%d %H:%M:%S"                # timestamp format
 )
 handler.setFormatter(formatter)
@@ -86,6 +87,65 @@ conn_global = psycopg2.connect(
 ) 
 
 cur_global = conn_global.cursor()
+
+def migrate_db():
+    # DB changes
+
+    # cur_global.execute("ALTER TABLE shadow DROP CONSTRAINT IF EXISTS shadow_bucket_id_object_key")
+    # cur_global.execute("ALTER TABLE shadow DROP COLUMN IF EXISTS parts")
+    # cur_global.execute("ALTER TABLE shadow DROP COLUMN IF EXISTS pg_ids")
+    # cur_global.execute("ALTER TABLE shadow ADD COLUMN IF NOT EXISTS pg_id CHAR(8)")
+    logger.info("Starting DB migration")
+    cur_global.execute("""
+        CREATE TABLE IF NOT EXISTS shadow2 (
+            bucket_id BIGINT NOT NULL REFERENCES buckets(id),
+            object TEXT NOT NULL,
+            has_non_print BOOLEAN,
+            mtime TIMESTAMP,
+            pg_id CHAR(8) NOT NULL
+        ) PARTITION BY LIST (pg_id)
+                    """)
+    for pgid in pgids:
+        cur_global.execute(f"CREATE TABLE IF NOT EXISTS objects_pg_{pgid.replace('.', '_')} PARTITION OF objects FOR VALUES IN ('{pgid}');")
+        cur_global.execute(f"CREATE TABLE IF NOT EXISTS shadow2_{pgid.replace('.', '_')} PARTITION OF shadow2 FOR VALUES IN ('{pgid}');")
+
+    conn_global.commit()
+    logger.info("Converting shadow to shadow2 table")
+    cur_global.execute("DELETE FROM shadow WHERE NOT '_1' = ANY (parts)")
+    conn_global.commit()
+    
+    cur_global.execute("""
+                       
+    SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = %s
+    );
+""", ("shadow2",))                       
+    exists = cur_global.fetchone()[0]
+    
+    if not exists:
+        for pgid in pgids:
+            cur_global.execute("""
+    INSERT INTO shadow2 (
+    SELECT
+    t.bucket_id,
+    t.object,
+    t.has_non_print,
+    NULL,
+    x.v AS pgid
+    FROM shadow t
+    CROSS JOIN LATERAL (
+    SELECT k, v
+    FROM unnest(t.parts, t.pg_ids) AS u(k, v)
+    WHERE k = '_1' and v= %s
+    LIMIT 1
+    ) x) """, (pgid, ))
+            cur_global.execute("TRUNCATE shadow")
+            conn_global.commit()
+    else:
+        logger.info("shadow2 migration already done")
+
 
 
 def run_rgw_admin(cmd):
@@ -218,20 +278,20 @@ regular_pattern = re.compile(
 q = queue.Queue(maxsize=1000)
 
 
-def worker(q: queue.Queue):
-    global processed
-    while True:
-        pgid = q.get()
+# def worker(q: queue.Queue):
+#     global processed
+#     while True:
+#         pgid = q.get()
 
-        if pgid is None:
-            break  # sentinel = stop signal
+#         if pgid is None:
+#             break  # sentinel = stop signal
         
-        try:
-            logger.info(f'Getting objects from {pgid}')
-            grab_objects(pgid)
+#         try:
+#             logger.info(f'Getting objects from {pgid}')
+#             grab_objects(pgid)
             
-        finally:
-            q.task_done()
+#         finally:
+#             q.task_done()
 
 bucket_markers = {}
 
@@ -277,10 +337,11 @@ def has_nonprintable(b: bytes) -> bool:
 
 
 def grab_objects(pgid):
+    multiprocessing.current_process().name = f"worker pgid: {pgid}"
     try:
         logger.debug(f"grab_objects({pgid})")
         start_time = time.time()
-        count=0
+        count = 0
         objects = list_objects_in_pg(pool_name, pgid)
         
         # pprint.pprint(objects)
@@ -349,15 +410,20 @@ def grab_objects(pgid):
             shadow_match = shadow_pattern.match(object)
             if shadow_match:
                 bucket_id = get_id_by_bucket_marker(shadow_match.groupdict()["full_id"], conn)
-                logger.debug(f"Found shadow {object}")
-                key = f'shadow:{shadow_match.groupdict()["full_id"]}__shadow_{shadow_match.groupdict()["rest"]}'
-                cur.execute("INSERT INTO shadow (bucket_id, object, has_non_print) VALUES(%s, %s, %s) ON CONFLICT (bucket_id, object) DO NOTHING;", (bucket_id, shadow_match.groupdict()["rest"], has_non_print))
-                conn.commit()
-                pipe.lpush("queue:shadow", json.dumps({'bucket_id': bucket_id, 
-                                                        'object': shadow_match.groupdict()["rest"], 
-                                                        'part': shadow_match.groupdict()['suffix'],
-                                                        'pg_id': pgid
-                                                        }))
+                logger.debug(f"Found shadow {object} part id: {shadow_match.groupdict()['suffix']}")
+                
+                if shadow_match.groupdict()['suffix'] == '_1':
+                    cur.execute("INSERT INTO shadow2 (bucket_id, object, has_non_print, pg_id) VALUES(%s, %s, %s, %s)", 
+                                (bucket_id, 
+                                 shadow_match.groupdict()["rest"], 
+                                 has_non_print,
+                                 pgid,
+                                 ))
+                    # pipe.lpush("queue:shadow", json.dumps({'bucket_id': bucket_id, 
+                    #                                         'object': shadow_match.groupdict()["rest"], 
+                    #                                         'part': shadow_match.groupdict()['suffix'],
+                    #                                         'pg_id': pgid
+                    #                                         }))
 #                cur.execute("UPDATE shadow SET parts = array_append(parts, %s) WHERE bucket_id = %s AND object = %s", (shadow_match.groupdict()['suffix'], bucket_id, shadow_match.groupdict()["rest"]) )
                 
 # UPDATE object_groups
@@ -376,7 +442,6 @@ def grab_objects(pgid):
             if regular_match:
                 logger.debug(f"Found regular {object}")
 
-                key = f'object:{regular_match.groupdict()["full_id"]}_{regular_match.groupdict()["objectname"]}'
                 
                 bucket_id = get_id_by_bucket_marker(regular_match.groupdict()["full_id"], conn)
                 
@@ -406,7 +471,9 @@ def grab_objects(pgid):
         r_progress.set(f"progress:{pgid}", count)
     except Exception:
         print("Exception in child process:", flush=True)
-        traceback.print_exc()  
+        traceback.print_exc()
+
+    return None
 
 def print_stats():
     for key in r_progress.scan_iter(match="finished:*", count=1000):
@@ -458,23 +525,23 @@ def update_worker(stop_event):
         try:
             logger.info(f"update_worker() doing stuff")
             # Shadow
-            while True:
-                msg = r.rpop("queue:shadow")  # 1 = max aantal keys
+            # while True:
+            #     msg = r.rpop("queue:shadow")  # 1 = max aantal keys
                 
-                if msg is not None:
-                    logger.debug(f"Ontvangen: {msg}")
-                    data = json.loads(msg.decode('utf-8'))
+            #     if msg is not None:
+            #         logger.debug(f"Ontvangen: {msg}")
+            #         data = json.loads(msg.decode('utf-8'))
                     
                     
-                    cur.execute("UPDATE shadow SET parts = array_append(parts, %s), pg_ids = array_append(pg_ids, %s) WHERE bucket_id = %s AND object = %s", 
-                                (data['part'], 
-                                 data['pg_id'],
-                                 data['bucket_id'], 
-                                 data['object']) 
-                                )
-                else:
-                    logger.info("Geen messages (meer)")
-                    break
+            #         cur.execute("UPDATE shadow SET parts = array_append(parts, %s), pg_ids = array_append(pg_ids, %s) WHERE bucket_id = %s AND object = %s", 
+            #                     (data['part'], 
+            #                      data['pg_id'],
+            #                      data['bucket_id'], 
+            #                      data['object']) 
+            #                     )
+            #     else:
+            #         logger.info("Geen messages (meer)")
+            #         break
                 
             # Multipart
             while True:
@@ -515,6 +582,8 @@ logger.info("\n\n")
 
 pgids = get_pgids(pool_name)
 
+migrate_db()
+
 # Compare pg_stats[pg_id]['objects] in redis to see if it needs scanning
 
 for key in r_progress.scan_iter(match="finished:*", count=1000):
@@ -524,10 +593,12 @@ for key in r_progress.scan_iter(match="finished:*", count=1000):
     objects_in_pg = pg_stats[pg_already_scanned]['objects']
     
     logger.info(f"Already scanned {pg_already_scanned} with {objects_scanned} pg_stats shows {objects_in_pg}")
-    if abs(objects_scanned - objects_in_pg) > 25:
-        logger.info(f" - pg maybe not completely scanned, rescanning it")
-    else:
-        pgids.remove(pg_already_scanned)
+    # if abs(objects_scanned - objects_in_pg) > 2500:
+    #     logger.info(f" - pg maybe not completely scanned, rescanning it")
+    # else:
+    #     pgids.remove(pg_already_scanned)
+    pgids.remove(pg_already_scanned)
+
 
 
 
@@ -542,9 +613,10 @@ stats_thread.start()
 update_thread = threading.Thread(target=update_worker, args=(stop_event,))
 update_thread.start()
 
-with ProcessPoolExecutor(max_workers=32) as executor:
-    executor.map(grab_objects, pgids)
-    
+
+executor = ProcessPoolExecutor(max_workers=32)
+executor.map(grab_objects, pgids)
+executor.shutdown(wait=True)  # wait for all workers
         
 # Signal stats thread to stop
 stop_event.set()

@@ -89,6 +89,20 @@ def clean_dups(pgid):
             AND r.rn > 1;
         """)
         conn.commit()
+        cur.execute(f"""
+            WITH ranked AS (
+                SELECT ctid,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY bucket_id, pg_id, object ORDER BY ctid
+                    ) AS rn
+                FROM shadow2_{pgid.replace('.', '_')}
+            )
+            DELETE FROM shadow2_{pgid.replace('.', '_')} o
+            USING ranked r
+            WHERE o.ctid = r.ctid
+            AND r.rn > 1;
+        """)
+        conn.commit()
     except Exception:
         print("Exception in child process:", flush=True)
         traceback.print_exc()  
