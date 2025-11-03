@@ -38,6 +38,14 @@ if [ ! -d "log" ]; then
     mkdir log
 fi
 
+if [ ! -d "tmp" ]; then
+    mkdir tmp
+fi
+
+if [ ! -d "darkdata" ]; then
+    mkdir darkdata
+fi
+
 
 docker run -it --rm -v $(pwd):/script \
 -v /etc/ceph:/etc/ceph \

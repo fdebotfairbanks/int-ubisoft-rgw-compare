@@ -331,6 +331,33 @@ def get_and_process_objects(pgid):
                     count += 1
 
                 batch_num += 1
+                
+        # Loop shadow objects
+
+        with conn.cursor(name='streaming_cursor', cursor_factory=DictCursor) as cur:
+            cur.itersize = batch_size
+            cur.execute("SELECT * FROM shadow WHERE pg_id[0] = %s AND mtime IS NULL", (pgid,))
+
+            batch_num = 0
+            while True:
+                rows = cur.fetchmany(batch_size)
+                if not rows:
+                    break
+                for i, row in enumerate(rows):
+                    # Process rows here
+                    logger.info(f"Processing row {i} of batch {batch_num} for pgid={pgid} => {row['object']}")
+                    # Example: do something with row
+
+                    bucket_prefix = get_bucket_prefix(row['bucket_id'])
+                    rados_object_name = f"{bucket_prefix}_{row['object']}"
+                    get_mtime(rados_object_name, conn, cluster, redis_pipe, row['bucket_id'])
+                    
+                    if count % 1000 == 0:
+                        redis_pipe.execute()
+                        
+                    count += 1
+
+                batch_num += 1
 
     except Exception:
         logger.exception(f"Exception in get_and_process_objects({pgid})")

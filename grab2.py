@@ -209,6 +209,7 @@ def build_bucket_id_map():
 
     return bucket_id_map
 
+
 def get_pgids(pool_name):
     """Get PG IDs for a given pool."""
     try:
@@ -219,16 +220,15 @@ def get_pgids(pool_name):
             text=True
         )
         pg_data = json.loads(result.stdout)
-        
+
         pgids = [pg["pgid"] for pg in pg_data["pg_stats"]]
-        
+
         for pg in pg_data["pg_stats"]:
             pg_stats[pg["pgid"]] = {"objects": pg["stat_sum"]["num_objects"]}
             stats['total']['objects'] = stats['total']['objects'] + pg["stat_sum"]["num_objects"]
-            
+
         stats['total']['pg_num'] = len(pgids)
-        
-        
+
         return pgids
     except subprocess.CalledProcessError as e:
         logger.error(f"[ERROR] Failed to get PGs: {e.stderr}")
@@ -593,10 +593,10 @@ for key in r_progress.scan_iter(match="finished:*", count=1000):
     objects_in_pg = pg_stats[pg_already_scanned]['objects']
     
     logger.info(f"Already scanned {pg_already_scanned} with {objects_scanned} pg_stats shows {objects_in_pg}")
-    # if abs(objects_scanned - objects_in_pg) > 2500:
-    #     logger.info(f" - pg maybe not completely scanned, rescanning it")
-    # else:
-    #     pgids.remove(pg_already_scanned)
+    if abs(objects_scanned - objects_in_pg) > 10000:
+        logger.info(f" - pg maybe not completely scanned, rescanning it")
+    else:
+        pgids.remove(pg_already_scanned)
     pgids.remove(pg_already_scanned)
 
 
