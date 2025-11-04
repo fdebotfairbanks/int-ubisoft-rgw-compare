@@ -597,11 +597,7 @@ for key in r_progress.scan_iter(match="finished:*", count=1000):
         logger.info(f" - pg maybe not completely scanned, rescanning it")
     else:
         pgids.remove(pg_already_scanned)
-    pgids.remove(pg_already_scanned)
-
-
-
-
+ 
 
 stats['script_start'] = time.time()
 
