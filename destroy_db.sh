@@ -30,4 +30,7 @@ docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d m
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "DROP TABLE buckets CASCADE";
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "DROP TABLE other CASCADE";
 
-#redis-cli -n 2 flushdb; redis-cli -n 0 flushdb
+docker run --rm  --network host fdebot42on/mypython redis-cli -n 2 flushdb
+
+docker exec -it redis1 redis-cli -n 2 flushdb
+docker exec -it redis1 redis-cli -n 0 flushdb
