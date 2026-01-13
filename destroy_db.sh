@@ -4,7 +4,7 @@ PORT=5432
 
 # Batch drop
 tables=$(docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "SELECT inhrelid::regclass FROM pg_inherits WHERE inhparent = 'objects'::regclass")
-shadow2=$(docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "SELECT inhrelid::regclass FROM pg_inherits WHERE inhparent = 'objects'::regclass")
+shadow2=$(docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "SELECT inhrelid::regclass FROM pg_inherits WHERE inhparent = 'multipart'::regclass")
 
 
 # Batch drop
@@ -29,8 +29,6 @@ docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d m
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "DROP TABLE shadow2 CASCADE";
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "DROP TABLE buckets CASCADE";
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "DROP TABLE other CASCADE";
-
-docker run --rm  --network host fdebot42on/mypython redis-cli -n 2 flushdb
 
 docker exec -it redis1 redis-cli -n 2 flushdb
 docker exec -it redis1 redis-cli -n 0 flushdb
