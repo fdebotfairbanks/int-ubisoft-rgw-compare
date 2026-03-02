@@ -2,37 +2,37 @@
 
 REPO="https://github.com/fdebotfairbanks/int-ubisoft-rgw-compare"
 
-./probe.py --method GET --timeout 3 $REPO
+# ./probe.py --method GET --timeout 3 $REPO
 
-if [ -e "http" ]; then
+# if [ -e "http" ]; then
 
-    if [ ! -e "skip_git" ]; then
-        # Check if current directory is a git repository
-        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-            echo "Git repository detected in current directory."
-            # Try to pull; if it fails, force-reset tracked files only
-            if ! git pull --rebase; then
-                echo "git pull failed. Resetting tracked files..."
-                CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-                git fetch origin
-                git reset --hard origin/"$CURRENT_BRANCH"
-                # NOTE: untracked files remain untouched
-            fi
-        else
-            echo "Not a git repository. Initializing..."
-            git config --global init.defaultBranch main
-            git init
-            git remote add origin "$REPO"
-            git fetch origin
-            git checkout -f -B main origin/main  # or origin/main if needed
-        fi
-    else
-        echo "Skip git pull"
-    fi
-    # Pull docker image
+#     if [ ! -e "skip_git" ]; then
+#         # Check if current directory is a git repository
+#         if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+#             echo "Git repository detected in current directory."
+#             # Try to pull; if it fails, force-reset tracked files only
+#             if ! git pull --rebase; then
+#                 echo "git pull failed. Resetting tracked files..."
+#                 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+#                 git fetch origin
+#                 git reset --hard origin/"$CURRENT_BRANCH"
+#                 # NOTE: untracked files remain untouched
+#             fi
+#         else
+#             echo "Not a git repository. Initializing..."
+#             git config --global init.defaultBranch main
+#             git init
+#             git remote add origin "$REPO"
+#             git fetch origin
+#             git checkout -f -B main origin/main  # or origin/main if needed
+#         fi
+#     else
+#         echo "Skip git pull"
+#     fi
+#     # Pull docker image
 
-    docker pull fdebot42on/mypython
-fi
+#     docker pull fdebot42on/mypython
+# fi
 
 if [ ! -d "log" ]; then
     mkdir log

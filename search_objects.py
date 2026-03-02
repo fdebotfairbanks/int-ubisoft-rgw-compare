@@ -86,7 +86,7 @@ def search_objects(pgid, cluster, pool_name, marker):
         cluster.connect()
         
         cnt = 0
-        with open(f"/script/darkdata/{pgid}", "w") as f:
+        with open(f"/script/darkdata/{marker}/{pgid}", "w") as f:
             with cluster.open_ioctx(pool_name) as ioctx:
                 with conn.cursor(name='streaming_cursor', cursor_factory=DictCursor) as cur:
                     cur.itersize = batch_size
@@ -175,6 +175,12 @@ if __name__ == "__main__":
     # Starts forking threads
 
     pgids = get_pgids(args.poolname)
+
+    try:
+        os.mkdir(f"/script/darkdata/{args.marker}")
+    except:
+        logger.info('dest dir already exists')
+
 
     with ProcessPoolExecutor(max_workers=32) as executor:
         executor.map(search_objects, pgids, repeat(cluster), repeat(pool_name), repeat(args.marker))
