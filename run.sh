@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 REPO="https://github.com/fdebotfairbanks/int-ubisoft-rgw-compare"
 
 # ./probe.py --method GET --timeout 3 $REPO

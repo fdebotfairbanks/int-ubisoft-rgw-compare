@@ -56,3 +56,39 @@ rados -p zone-a.rgw.buckets.data getxattr 88b24e22-5889-4011-88db-eeeb6fca97c3.1
 
 # cleanup duplicates
 ./run.sh psql_removeduplicates.py --poolname zone-a.rgw.buckets.data --cluster ceph
+
+# match shadow objects
+./run.sh match_shadow_objects.py --poolname zone-a.rgw.buckets.data --cluster ceph
+
+
+# Restore db
+docker exec -it postgres bash
+psql -h 127.0.0.1 -U myuser mydb < /container/dump/smallerdumpsql
+
+# randomize pg ids for test
+
+DO $$
+DECLARE
+    i int;
+    pgid text;
+BEGIN
+    FOR i IN 0..255 LOOP
+        pgid := '17.' || to_hex(i);
+        EXECUTE format(
+            'CREATE TABLE IF NOT EXISTS objects_pg_%s PARTITION OF objects FOR VALUES IN (%L);',
+            replace(pgid, '.', '_'),
+            pgid
+        );
+    END LOOP;
+END$$;
+
+UPDATE shadow
+SET pg_ids = (
+  SELECT array_agg('17.' || to_hex(floor(random() * 256)::int))
+  FROM generate_series(1, array_length(pg_ids, 1))
+);
+
+UPDATE objects
+SET pg_id = '17.' || to_hex(floor(random() * 256)::int);
+
+

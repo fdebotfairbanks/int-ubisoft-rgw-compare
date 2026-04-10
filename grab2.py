@@ -88,6 +88,20 @@ conn_global = psycopg2.connect(
 
 cur_global = conn_global.cursor()
 
+def column_exists(conn, schema: str, table: str, column: str) -> bool:
+    query = """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = %s
+              AND table_name   = %s
+              AND column_name  = %s
+        );
+    """
+    with conn.cursor() as cur:
+        cur.execute(query, (schema, table, column))
+        return cur.fetchone()[0]
+
 def migrate_db():
     # DB changes
 
@@ -145,6 +159,84 @@ def migrate_db():
             conn_global.commit()
     else:
         logger.info("shadow2 migration already done")
+
+    # Add id to object
+    exists = column_exists(conn_global, "public", "objects", "id")
+    if not exists:
+        cur_global.execute("ALTER TABLE objects ADD COLUMN IF NOT EXISTS id bigint")
+        cur_global.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_class
+            WHERE relkind = 'S'
+            AND relname = 'objects_id_seq'
+        ) THEN
+            CREATE SEQUENCE objects_id_seq;
+        END IF;
+    END
+    $$;                       
+                        """)
+        cur_global.execute("ALTER TABLE objects ALTER COLUMN id SET DEFAULT nextval('objects_id_seq')")
+        cur_global.execute("ALTER SEQUENCE objects_id_seq OWNED BY objects.id")
+        cur_global.execute("UPDATE objects SET id = nextval('objects_id_seq') WHERE id IS NULL;")
+        cur_global.execute("SELECT setval('objects_id_seq', (SELECT MAX(id) FROM objects))")
+        cur_global.execute("ALTER TABLE objects ADD CONSTRAINT objects_id_key UNIQUE (pg_id, id)")
+        conn_global.commit()
+    else:
+        logger.info("id on objects already exists, skipping migration")
+
+    # Add id to shadow2
+    exists = column_exists(conn_global, "public", "shadow2", "id")
+    if not exists:
+        cur_global.execute("ALTER TABLE shadow2 ADD COLUMN IF NOT EXISTS id bigint")
+        cur_global.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_class
+            WHERE relkind = 'S'
+            AND relname = 'shadow2_id_seq'
+        ) THEN
+            CREATE SEQUENCE shadow2_id_seq;
+        END IF;
+    END
+    $$;                       
+                        """)
+        cur_global.execute("ALTER TABLE shadow2 ALTER COLUMN id SET DEFAULT nextval('shadow2_id_seq')")
+        cur_global.execute("ALTER SEQUENCE shadow2_id_seq OWNED BY shadow2.id")
+        cur_global.execute("UPDATE shadow2 SET id = nextval('shadow2_id_seq') WHERE id IS NULL;")
+        cur_global.execute("SELECT setval('shadow2_id_seq', (SELECT MAX(id) FROM shadow2))")
+        cur_global.execute("ALTER TABLE shadow2 ADD CONSTRAINT shadow2_id_key UNIQUE (pg_id, id)")
+        conn_global.commit()
+    else:
+        logger.info("id on objects already exists, skipping migration")
+
+    # Add object_id to shadow2       
+    logger.info("Add object_id column") 
+    cur_global.execute("ALTER TABLE shadow2 ADD COLUMN IF NOT EXISTS object_id bigint;")
+    cur_global.execute("ALTER TABLE shadow2 ADD COLUMN IF NOT EXISTS object_pg_id CHAR(8);")
+    cur_global.execute("""
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'shadow2_object_id_fkey'
+    ) THEN
+        ALTER TABLE shadow2
+        ADD CONSTRAINT shadow2_object_id_fkey
+        FOREIGN KEY (object_pg_id,object_id)
+        REFERENCES objects(pg_id, id);
+    END IF;
+END
+$$;                       
+                       """)
+    
+    cur_global.execute("ALTER TABLE objects ADD COLUMN IF NOT EXISTS size int8")
+    conn_global.commit()
 
 
 
@@ -473,6 +565,7 @@ def grab_objects(pgid):
         print("Exception in child process:", flush=True)
         traceback.print_exc()
 
+    logger.info(f"PGID {pgid} has completed scanning")
     return None
 
 def print_stats():
@@ -609,10 +702,11 @@ stats_thread.start()
 update_thread = threading.Thread(target=update_worker, args=(stop_event,))
 update_thread.start()
 
+conn_global.close()
 
-executor = ProcessPoolExecutor(max_workers=32)
-executor.map(grab_objects, pgids)
-executor.shutdown(wait=True)  # wait for all workers
+with ProcessPoolExecutor(max_workers=16) as executor:
+    executor.map(grab_objects, pgids)
+    # executor.shutdown(wait=True)  # wait for all workers
         
 # Signal stats thread to stop
 stop_event.set()

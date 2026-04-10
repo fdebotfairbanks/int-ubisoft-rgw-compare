@@ -8,12 +8,6 @@ shadow2=$(docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U m
 
 
 # Batch drop
-echo "$tables" | xargs -n 250 | while read batch; do
-    # Maak 1 DROP TABLE statement
-    sql="DROP TABLE $(echo $batch | tr ' ' ',');"
-    echo $sql
-    docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc  "$sql"
-done
 
 echo "$shadow2" | xargs -n 250 | while read batch; do
     # Maak 1 DROP TABLE statement
@@ -21,6 +15,14 @@ echo "$shadow2" | xargs -n 250 | while read batch; do
     echo $sql
     docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT  -U myuser -d mydb  -Atc  "$sql"
 done
+
+echo "$tables" | xargs -n 250 | while read batch; do
+    # Maak 1 DROP TABLE statement
+    sql="DROP TABLE $(echo $batch | tr ' ' ',');"
+    echo $sql
+    docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc  "$sql"
+done
+
 
 
 docker run --rm --net host postgres:16 psql -h 127.0.0.1 -p $PORT -U myuser -d mydb  -Atc "DROP TABLE objects CASCADE";
