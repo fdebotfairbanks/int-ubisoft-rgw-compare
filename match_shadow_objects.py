@@ -225,8 +225,8 @@ def match_objects(pgid):
         count = 0
         with conn.cursor(name='streaming_cursor', cursor_factory=DictCursor) as cur:
             cur.itersize = BATCH_SIZE
-            # cur.execute("SELECT bucket_id,pg_id,object FROM objects WHERE pg_id = %s AND mtime IS NULL", (pgid,))
-            cur.execute("SELECT bucket_id,pg_id,object,id FROM objects WHERE pg_id = %s --AND mtime IS NULL", (pgid,))
+            cur.execute("SELECT bucket_id,pg_id,object FROM objects WHERE pg_id = %s AND mtime IS NULL", (pgid,))
+            # cur.execute("SELECT bucket_id,pg_id,object,id FROM objects WHERE pg_id = %s --AND mtime IS NULL", (pgid,))
 
             batch_num = 0
             while True:
@@ -240,23 +240,27 @@ def match_objects(pgid):
                     bucket_prefix = get_bucket_prefix(row['bucket_id'], conn)
                     rados_object_name = f"{bucket_prefix}_{row['object']}"
                     
-                    size, mtime = ioctx.stat(rados_object_name)
-                    mtime_timestamp = str(calendar.timegm(mtime))
-                    logger.info(f"  - mtime: {mtime_timestamp}")
-                    
-                    update_cur.execute("UPDATE objects SET mtime=to_timestamp(%s), size=%s WHERE bucket_id=%s AND pg_id=%s AND object=%s", 
-                                (mtime_timestamp, size, row['bucket_id'], row['pg_id'], row['object'], )
-                                )
-                    # Get manifest
-                    
-                    manifest = get_manifest(ioctx, rados_object_name)
-                    stripped_prefix = manifest['prefix'].removesuffix("_")
-                    
-                    # Lookup prefix in redis
-                    d = r.get(stripped_prefix)
-                    if d:
-                        val = json.loads(d)
-                        update_cur.execute("UPDATE shadow2 SET object_id=%s, object_pg_id=%s WHERE pg_id=%s AND id=%s", (row['id'], row['pg_id'], val['pg_id'], val['id']))
+                    try:
+                        size, mtime = ioctx.stat(rados_object_name)
+                        mtime_timestamp = str(calendar.timegm(mtime))
+                        logger.info(f"  - mtime: {mtime_timestamp}")
+                        
+                        update_cur.execute("UPDATE objects SET mtime=to_timestamp(%s), size=%s WHERE bucket_id=%s AND pg_id=%s AND object=%s", 
+                                    (mtime_timestamp, size, row['bucket_id'], row['pg_id'], row['object'], )
+                                    )
+                        # Get manifest
+                        
+                        manifest = get_manifest(ioctx, rados_object_name)
+                        stripped_prefix = manifest['prefix'].removesuffix("_")
+                        
+                        # Lookup prefix in redis
+                        d = r.get(stripped_prefix)
+                        if d:
+                            val = json.loads(d)
+                            update_cur.execute("UPDATE shadow2 SET object_id=%s, object_pg_id=%s WHERE pg_id=%s AND id=%s", (row['id'], row['pg_id'], val['pg_id'], val['id']))
+                    except rados.ObjectNotFound:
+                        update_cur.execute("UPDATE objects SET not_found=true WHERE bucket_id=%s AND pg_id=%s AND object=%s",(row['bucket_id'], row['pg_id'], row['object'],)) 
+                            
                     
                     count += 1
                     
@@ -265,8 +269,9 @@ def match_objects(pgid):
 
                     # get_mtime(rados_object_name, conn, cluster, redis_pipe, row['bucket_id'])
             
-                # Final commit
-                update_conn.commit()
+        # Final commit
+        logger.info("final commit")
+        update_conn.commit()
                     
     except Exception:
         print("Exception in child process:", flush=True)
@@ -276,6 +281,7 @@ def match_objects(pgid):
         
 
 def get_mtimes(pgid):
+    logger.info("get_mtimes()")
     try:
         # Ceph
         cluster = rados.Rados(conffile=f'/etc/ceph/{cluster_name}.conf')
@@ -322,10 +328,14 @@ def get_mtimes(pgid):
                     bucket_prefix = get_bucket_prefix(row['bucket_id'], conn)
                     rados_object_name = f"{bucket_prefix}__shadow_{row['object']}_1"
                     
-                    size, mtime = ioctx.stat(rados_object_name)
-                    mtime_timestamp = str(calendar.timegm(mtime))
-                    
-                    update_cur.execute('UPDATE shadow2 SET mtime=to_timestamp(%s) WHERE pg_id = %s AND id =%s', (mtime_timestamp, pgid, row['id'],))
+                    try:
+                        logger.info('test1')
+                        size, mtime = ioctx.stat(rados_object_name)
+                        mtime_timestamp = str(calendar.timegm(mtime))
+                        update_cur.execute('UPDATE shadow2 SET mtime=to_timestamp(%s) WHERE pg_id = %s AND id =%s', (mtime_timestamp, pgid, row['id'],))
+                    except rados.ObjectNotFound:
+                        logger.info('test2')
+                        update_cur.execute('UPDATE shadow2 SET not_found=true WHERE pg_id = %s AND id =%s', (pgid, row['id'],))
                     if count % 100:
                         update_conn.commit()
 
@@ -339,9 +349,32 @@ def get_mtimes(pgid):
 
     return None
 
+def migrate_db():
+    logger.info('migrate_db()')
+    # DB changes
+    conn_global = psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS
+    ) 
+
+    cur_global = conn_global.cursor()
+    
+    cur_global.execute("ALTER TABLE objects ADD COLUMN IF NOT EXISTS not_found BOOLEAN")
+    cur_global.execute("ALTER TABLE shadow2 ADD COLUMN IF NOT EXISTS not_found BOOLEAN")
+    
+    conn_global.commit()
+    conn_global.close()
+                       
+    logger.info('migrate_db() done')
+
 
 
 pgids = get_pgids(pool_name)
+
+migrate_db()
 
 with ProcessPoolExecutor(max_workers=16) as executor:
     executor.map(shadow2_to_redis, pgids)

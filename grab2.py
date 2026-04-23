@@ -565,6 +565,9 @@ def grab_objects(pgid):
         print("Exception in child process:", flush=True)
         traceback.print_exc()
 
+    conn.commit()
+    pipe.execute()
+
     logger.info(f"PGID {pgid} has completed scanning")
     return None
 
@@ -691,6 +694,7 @@ for key in r_progress.scan_iter(match="finished:*", count=1000):
     else:
         pgids.remove(pg_already_scanned)
  
+conn_global.close()
 
 stats['script_start'] = time.time()
 
@@ -701,8 +705,6 @@ stats_thread.start()
 
 update_thread = threading.Thread(target=update_worker, args=(stop_event,))
 update_thread.start()
-
-conn_global.close()
 
 with ProcessPoolExecutor(max_workers=16) as executor:
     executor.map(grab_objects, pgids)
