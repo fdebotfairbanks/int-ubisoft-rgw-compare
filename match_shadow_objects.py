@@ -329,12 +329,10 @@ def get_mtimes(pgid):
                     rados_object_name = f"{bucket_prefix}__shadow_{row['object']}_1"
                     
                     try:
-                        logger.info('test1')
                         size, mtime = ioctx.stat(rados_object_name)
                         mtime_timestamp = str(calendar.timegm(mtime))
                         update_cur.execute('UPDATE shadow2 SET mtime=to_timestamp(%s) WHERE pg_id = %s AND id =%s', (mtime_timestamp, pgid, row['id'],))
                     except rados.ObjectNotFound:
-                        logger.info('test2')
                         update_cur.execute('UPDATE shadow2 SET not_found=true WHERE pg_id = %s AND id =%s', (pgid, row['id'],))
                     if count % 100:
                         update_conn.commit()
