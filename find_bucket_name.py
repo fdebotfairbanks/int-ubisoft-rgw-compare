@@ -44,6 +44,11 @@ marker = args.marker
 multipart_pattern = re.compile(
     r'^(?P<full_id>[a-f0-9\-]+\.\d+\.\d+)__multipart_(?P<objectname>.+)\.(?P<postfix>\d+~[^.]+)\.(?P<number>\d+)$'
 )
+
+multipart_legacy_pattern = re.compile(
+    r'(?P<full_id>[a-f0-9\-]+\.\d+\.\d+)__multipart_(?P<objectname>.+)\.(?P<postfix>[^.]+)\.(?P<number>\d+)$'
+)
+
 shadow_pattern = re.compile(
     r'^(?P<full_id>[a-f0-9\-]+\.\d+\.\d+)__shadow_(?P<rest>.*?)(?P<suffix>\.\d+_\d+|_\d+)$'
 )
@@ -179,7 +184,7 @@ bucketmap = build_bucket_id_map()
 pprint.pprint(bucketmap)
 if marker in bucketmap:
     logger.info(f'marker {marker} belongs to bucket {bucketmap[marker]} it is an existing  bucket')
-    exit(1)
+    # exit(1)
 
 
 for pgid in get_pgids(cluster_name, pool_name):
@@ -187,18 +192,24 @@ for pgid in get_pgids(cluster_name, pool_name):
 
     for object in objects:
         multipart_match = multipart_pattern.match(object)
+        multipart_legacy_match = multipart_legacy_pattern.match(object)
         shadow_match = shadow_pattern.match(object)
         regular_match = regular_pattern.match(object)
 
         if multipart_match:
             continue
+        elif multipart_legacy_match:
+            continue
         elif shadow_match:
             continue
         if regular_match:
-            full_id = regular_match.groupdict()["full_id"]
-            # logger.info(f"Checking {full_id} == {marker} ?")
-            if regular_match.groupdict()["full_id"] == marker:
-                manifest = get_manifest(object)
-                bucket_name = manifest['begin_iter']['location']['obj']['bucket']['name']
-                logger.info(f'Bucket name {bucket_name}')
-                exit(1)
+            try:
+                full_id = regular_match.groupdict()["full_id"]
+                # logger.info(f"Checking {full_id} == {marker} ?")
+                if regular_match.groupdict()["full_id"] == marker:
+                    manifest = get_manifest(object)
+                    bucket_name = manifest['begin_iter']['location']['obj']['bucket']['name']
+                    logger.info(f'Bucket name {bucket_name}')
+                    exit(1)
+            except Exception:
+                logger.debug(f"Skipping {object}")
