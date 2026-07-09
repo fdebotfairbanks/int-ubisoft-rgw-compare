@@ -103,7 +103,7 @@ def run_rgw_admin(cmd):
 
 def get_bucket_stats(bucket):
     """Fetch stats for a single bucket and return mapping entries."""
-    logger.info(f"Get ID for bucket {bucket}")
+    # logger.info(f"Get ID for bucket {bucket}")
     stats = run_rgw_admin(['bucket', 'stats', '--bucket', bucket])
     if stats and 'id' in stats:
         bucket_id_map = {
@@ -181,7 +181,7 @@ def get_manifest(object_name: str) -> Dict:
 
 
 bucketmap = build_bucket_id_map()
-pprint.pprint(bucketmap)
+
 if marker in bucketmap:
     logger.info(f'marker {marker} belongs to bucket {bucketmap[marker]} it is an existing  bucket')
     # exit(1)
